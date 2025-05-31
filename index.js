@@ -663,342 +663,343 @@ io.on("connection", (socket) => {
   });
 
   // #MONGO
-  // socket.on("offer", async (offer) => {
-  //   const isPlayerInGame = await isPlayerInRoom(offer.room, offer.myId);
-
-  //   console.log("OFFER", isPlayerInGame);
-  //   if (isPlayerInGame) {
-  //     socket.broadcast.to(offer.room).emit("offer", offer.data);
-  //     console.log("OFFER sent to room:", offer);
-  //   } else {
-  //     console.log(`User ${offer.myId} is not part of game ${offer.room}`);
-  //     socket.disconnect();
-  //   }
-  // });
-
-  // // Handle answer
-  // // #MONGO
-  // socket.on("answer", async (answer) => {
-  //   const isPlayerInGame = await isPlayerInRoom(answer.room, answer.myId);
-
-  //   if (isPlayerInGame) {
-  //     socket.broadcast.to(answer.room).emit("answer", answer.data);
-  //     console.log("ANSWER sent to room:", answer);
-  //   } else {
-  //     console.log(`User ${answer.myId} is not part of game ${answer.room}`);
-  //     socket.disconnect();
-  //   }
-  // });
-
-  // // Handle ICE candidate
-  // // #MONGO
-  // socket.on("candidate", async (candidate) => {
-  //   const isPlayerInGame = await isPlayerInRoom(candidate.room, candidate.myId);
-
-  //   if (isPlayerInGame) {
-  //     socket.broadcast.to(candidate.room).emit("candidate", candidate.data);
-  //     console.log("CANDIDATE sent to room:", candidate);
-  //   } else {
-  //     console.log(
-  //       `User ${candidate.myId} is not part of game ${candidate.room}`
-  //     );
-  //     socket.disconnect();
-  //   }
-  // });
-
-  const activeConnections = new Map();
-
-  // Enhanced offer handler
   socket.on("offer", async (offer) => {
-    try {
-      console.log(`Received offer from ${offer.myId} in room ${offer.room}`);
+    const isPlayerInGame = await isPlayerInRoom(offer.room, offer.myId);
 
-      const isPlayerInGame = await isPlayerInRoom(offer.room, offer.myId);
-
-      if (isPlayerInGame) {
-        // Store connection info for cleanup
-        activeConnections.set(socket.id, {
-          userId: offer.myId,
-          roomId: offer.room,
-          type: "offer",
-        });
-
-        // Broadcast offer to other players in room (excluding sender)
-        socket.broadcast.to(offer.room).emit("offer", offer.data);
-        console.log(`OFFER sent to room: ${offer.room}`);
-      } else {
-        console.log(`User ${offer.myId} is not part of game ${offer.room}`);
-        socket.emit("error", {
-          type: "unauthorized",
-          message: "Not authorized for this room",
-        });
-        socket.disconnect();
-      }
-    } catch (error) {
-      console.error("Error handling offer:", error);
-      socket.emit("error", {
-        type: "server_error",
-        message: "Failed to process offer",
-      });
+    console.log("OFFER", isPlayerInGame);
+    if (isPlayerInGame) {
+      socket.broadcast.to(offer.room).emit("offer", offer.data);
+      console.log("OFFER sent to room:", offer);
+    } else {
+      console.log(`User ${offer.myId} is not part of game ${offer.room}`);
+      socket.disconnect();
     }
   });
 
-  // Enhanced answer handler
+  // Handle answer
+  // #MONGO
   socket.on("answer", async (answer) => {
-    try {
-      console.log(`Received answer from ${answer.myId} in room ${answer.room}`);
+    const isPlayerInGame = await isPlayerInRoom(answer.room, answer.myId);
 
-      const isPlayerInGame = await isPlayerInRoom(answer.room, answer.myId);
-
-      if (isPlayerInGame) {
-        // Store connection info for cleanup
-        activeConnections.set(socket.id, {
-          userId: answer.myId,
-          roomId: answer.room,
-          type: "answer",
-        });
-
-        // Broadcast answer to other players in room (excluding sender)
-        socket.broadcast.to(answer.room).emit("answer", answer.data);
-        console.log(`ANSWER sent to room: ${answer.room}`);
-      } else {
-        console.log(`User ${answer.myId} is not part of game ${answer.room}`);
-        socket.emit("error", {
-          type: "unauthorized",
-          message: "Not authorized for this room",
-        });
-        socket.disconnect();
-      }
-    } catch (error) {
-      console.error("Error handling answer:", error);
-      socket.emit("error", {
-        type: "server_error",
-        message: "Failed to process answer",
-      });
+    if (isPlayerInGame) {
+      socket.broadcast.to(answer.room).emit("answer", answer.data);
+      console.log("ANSWER sent to room:", answer);
+    } else {
+      console.log(`User ${answer.myId} is not part of game ${answer.room}`);
+      socket.disconnect();
     }
   });
 
-  // Enhanced ICE candidate handler
+  // Handle ICE candidate
+  // #MONGO
   socket.on("candidate", async (candidate) => {
-    try {
+    const isPlayerInGame = await isPlayerInRoom(candidate.room, candidate.myId);
+
+    if (isPlayerInGame) {
+      socket.broadcast.to(candidate.room).emit("candidate", candidate.data);
+      console.log("CANDIDATE sent to room:", candidate);
+    } else {
       console.log(
-        `Received ICE candidate from ${candidate.myId} in room ${candidate.room}`
+        `User ${candidate.myId} is not part of game ${candidate.room}`
       );
-
-      const isPlayerInGame = await isPlayerInRoom(
-        candidate.room,
-        candidate.myId
-      );
-
-      if (isPlayerInGame) {
-        // Store connection info for cleanup
-        if (!activeConnections.has(socket.id)) {
-          activeConnections.set(socket.id, {
-            userId: candidate.myId,
-            roomId: candidate.room,
-            type: "candidate",
-          });
-        }
-
-        // Broadcast ICE candidate to other players in room (excluding sender)
-        socket.broadcast.to(candidate.room).emit("candidate", candidate.data);
-        console.log(`ICE CANDIDATE sent to room: ${candidate.room}`);
-      } else {
-        console.log(
-          `User ${candidate.myId} is not part of game ${candidate.room}`
-        );
-        socket.emit("error", {
-          type: "unauthorized",
-          message: "Not authorized for this room",
-        });
-        socket.disconnect();
-      }
-    } catch (error) {
-      console.error("Error handling ICE candidate:", error);
-      socket.emit("error", {
-        type: "server_error",
-        message: "Failed to process ICE candidate",
-      });
+      socket.disconnect();
     }
   });
 
-  // Handle WebRTC connection end
-  socket.on("end-call", async (data) => {
-    try {
-      console.log(`Call ended by ${data.myId} in room ${data.room}`);
+  // =============OTHER VIDEO CHAT CODE================================
+  // const activeConnections = new Map();
 
-      const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
+  // // Enhanced offer handler
+  // socket.on("offer", async (offer) => {
+  //   try {
+  //     console.log(`Received offer from ${offer.myId} in room ${offer.room}`);
 
-      if (isPlayerInGame) {
-        // Notify other players that call has ended
-        socket.broadcast.to(data.room).emit("call-ended", {
-          userId: data.myId,
-          message: "Peer has left the call",
-        });
+  //     const isPlayerInGame = await isPlayerInRoom(offer.room, offer.myId);
 
-        // Clean up connection info
-        activeConnections.delete(socket.id);
+  //     if (isPlayerInGame) {
+  //       // Store connection info for cleanup
+  //       activeConnections.set(socket.id, {
+  //         userId: offer.myId,
+  //         roomId: offer.room,
+  //         type: "offer",
+  //       });
 
-        console.log(`Call end notification sent to room: ${data.room}`);
-      }
-    } catch (error) {
-      console.error("Error handling call end:", error);
-    }
-  });
+  //       // Broadcast offer to other players in room (excluding sender)
+  //       socket.broadcast.to(offer.room).emit("offer", offer.data);
+  //       console.log(`OFFER sent to room: ${offer.room}`);
+  //     } else {
+  //       console.log(`User ${offer.myId} is not part of game ${offer.room}`);
+  //       socket.emit("error", {
+  //         type: "unauthorized",
+  //         message: "Not authorized for this room",
+  //       });
+  //       socket.disconnect();
+  //     }
+  //   } catch (error) {
+  //     console.error("Error handling offer:", error);
+  //     socket.emit("error", {
+  //       type: "server_error",
+  //       message: "Failed to process offer",
+  //     });
+  //   }
+  // });
 
-  // Handle WebRTC connection failure/retry
-  socket.on("connection-retry", async (data) => {
-    try {
-      console.log(`Connection retry from ${data.myId} in room ${data.room}`);
+  // // Enhanced answer handler
+  // socket.on("answer", async (answer) => {
+  //   try {
+  //     console.log(`Received answer from ${answer.myId} in room ${answer.room}`);
 
-      const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
+  //     const isPlayerInGame = await isPlayerInRoom(answer.room, answer.myId);
 
-      if (isPlayerInGame) {
-        // Notify other players about connection retry
-        socket.broadcast.to(data.room).emit("peer-retry", {
-          userId: data.myId,
-          message: "Peer is attempting to reconnect",
-        });
+  //     if (isPlayerInGame) {
+  //       // Store connection info for cleanup
+  //       activeConnections.set(socket.id, {
+  //         userId: answer.myId,
+  //         roomId: answer.room,
+  //         type: "answer",
+  //       });
 
-        console.log(`Connection retry notification sent to room: ${data.room}`);
-      }
-    } catch (error) {
-      console.error("Error handling connection retry:", error);
-    }
-  });
+  //       // Broadcast answer to other players in room (excluding sender)
+  //       socket.broadcast.to(answer.room).emit("answer", answer.data);
+  //       console.log(`ANSWER sent to room: ${answer.room}`);
+  //     } else {
+  //       console.log(`User ${answer.myId} is not part of game ${answer.room}`);
+  //       socket.emit("error", {
+  //         type: "unauthorized",
+  //         message: "Not authorized for this room",
+  //       });
+  //       socket.disconnect();
+  //     }
+  //   } catch (error) {
+  //     console.error("Error handling answer:", error);
+  //     socket.emit("error", {
+  //       type: "server_error",
+  //       message: "Failed to process answer",
+  //     });
+  //   }
+  // });
 
-  // Enhanced disconnect handler
-  socket.on("disconnect", (reason) => {
-    try {
-      console.log(`Socket ${socket.id} disconnected: ${reason}`);
+  // // Enhanced ICE candidate handler
+  // socket.on("candidate", async (candidate) => {
+  //   try {
+  //     console.log(
+  //       `Received ICE candidate from ${candidate.myId} in room ${candidate.room}`
+  //     );
 
-      const connectionInfo = activeConnections.get(socket.id);
+  //     const isPlayerInGame = await isPlayerInRoom(
+  //       candidate.room,
+  //       candidate.myId
+  //     );
 
-      if (connectionInfo) {
-        const { userId, roomId } = connectionInfo;
+  //     if (isPlayerInGame) {
+  //       // Store connection info for cleanup
+  //       if (!activeConnections.has(socket.id)) {
+  //         activeConnections.set(socket.id, {
+  //           userId: candidate.myId,
+  //           roomId: candidate.room,
+  //           type: "candidate",
+  //         });
+  //       }
 
-        // Notify other players in the room about disconnection
-        socket.broadcast.to(roomId).emit("peer-disconnected", {
-          userId: userId,
-          message: "Peer has disconnected",
-          reason: reason,
-        });
+  //       // Broadcast ICE candidate to other players in room (excluding sender)
+  //       socket.broadcast.to(candidate.room).emit("candidate", candidate.data);
+  //       console.log(`ICE CANDIDATE sent to room: ${candidate.room}`);
+  //     } else {
+  //       console.log(
+  //         `User ${candidate.myId} is not part of game ${candidate.room}`
+  //       );
+  //       socket.emit("error", {
+  //         type: "unauthorized",
+  //         message: "Not authorized for this room",
+  //       });
+  //       socket.disconnect();
+  //     }
+  //   } catch (error) {
+  //     console.error("Error handling ICE candidate:", error);
+  //     socket.emit("error", {
+  //       type: "server_error",
+  //       message: "Failed to process ICE candidate",
+  //     });
+  //   }
+  // });
 
-        // Clean up stored connection info
-        activeConnections.delete(socket.id);
+  // // Handle WebRTC connection end
+  // socket.on("end-call", async (data) => {
+  //   try {
+  //     console.log(`Call ended by ${data.myId} in room ${data.room}`);
 
-        console.log(
-          `Peer disconnection notification sent to room: ${roomId} for user: ${userId}`
-        );
-      }
-    } catch (error) {
-      console.error("Error handling disconnect:", error);
-    }
-  });
+  //     const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
 
-  // Health check for WebRTC connections
-  socket.on("webrtc-health-check", async (data) => {
-    try {
-      const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
+  //     if (isPlayerInGame) {
+  //       // Notify other players that call has ended
+  //       socket.broadcast.to(data.room).emit("call-ended", {
+  //         userId: data.myId,
+  //         message: "Peer has left the call",
+  //       });
 
-      if (isPlayerInGame) {
-        socket.emit("webrtc-health-response", {
-          status: "ok",
-          timestamp: Date.now(),
-          room: data.room,
-        });
-      } else {
-        socket.emit("webrtc-health-response", {
-          status: "unauthorized",
-          timestamp: Date.now(),
-        });
-      }
-    } catch (error) {
-      socket.emit("webrtc-health-response", {
-        status: "error",
-        timestamp: Date.now(),
-        error: error.message,
-      });
-    }
-  });
+  //       // Clean up connection info
+  //       activeConnections.delete(socket.id);
 
-  // Room management - get active connections in room
-  socket.on("get-room-connections", async (data) => {
-    try {
-      const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
+  //       console.log(`Call end notification sent to room: ${data.room}`);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error handling call end:", error);
+  //   }
+  // });
 
-      if (isPlayerInGame) {
-        const roomConnections = [];
+  // // Handle WebRTC connection failure/retry
+  // socket.on("connection-retry", async (data) => {
+  //   try {
+  //     console.log(`Connection retry from ${data.myId} in room ${data.room}`);
 
-        // Get all sockets in the room
-        const socketsInRoom = await io.in(data.room).fetchSockets();
+  //     const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
 
-        for (const socketInRoom of socketsInRoom) {
-          const connInfo = activeConnections.get(socketInRoom.id);
-          if (connInfo && connInfo.userId !== data.myId) {
-            roomConnections.push({
-              userId: connInfo.userId,
-              socketId: socketInRoom.id,
-              type: connInfo.type,
-            });
-          }
-        }
+  //     if (isPlayerInGame) {
+  //       // Notify other players about connection retry
+  //       socket.broadcast.to(data.room).emit("peer-retry", {
+  //         userId: data.myId,
+  //         message: "Peer is attempting to reconnect",
+  //       });
 
-        socket.emit("room-connections", {
-          room: data.room,
-          connections: roomConnections,
-          total: roomConnections.length,
-        });
-      }
-    } catch (error) {
-      console.error("Error getting room connections:", error);
-      socket.emit("error", {
-        type: "server_error",
-        message: "Failed to get room connections",
-      });
-    }
-  });
+  //       console.log(`Connection retry notification sent to room: ${data.room}`);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error handling connection retry:", error);
+  //   }
+  // });
 
-  // Cleanup function for server shutdown
-  const cleanupWebRTCConnections = () => {
-    console.log("Cleaning up WebRTC connections...");
+  // // Enhanced disconnect handler
+  // socket.on("disconnect", (reason) => {
+  //   try {
+  //     console.log(`Socket ${socket.id} disconnected: ${reason}`);
 
-    // Notify all active connections about server shutdown
-    for (const [socketId, connectionInfo] of activeConnections) {
-      const socket = io.sockets.sockets.get(socketId);
-      if (socket) {
-        socket.emit("server-shutdown", {
-          message: "Server is shutting down",
-          timestamp: Date.now(),
-        });
-      }
-    }
+  //     const connectionInfo = activeConnections.get(socket.id);
 
-    activeConnections.clear();
-  };
+  //     if (connectionInfo) {
+  //       const { userId, roomId } = connectionInfo;
 
-  // Error handling middleware for WebRTC events
-  const webrtcErrorHandler = (eventName, handler) => {
-    return async (...args) => {
-      try {
-        await handler(...args);
-      } catch (error) {
-        console.error(`Error in ${eventName}:`, error);
-        socket.emit("error", {
-          type: "webrtc_error",
-          event: eventName,
-          message: error.message,
-          timestamp: Date.now(),
-        });
-      }
-    };
-  };
+  //       // Notify other players in the room about disconnection
+  //       socket.broadcast.to(roomId).emit("peer-disconnected", {
+  //         userId: userId,
+  //         message: "Peer has disconnected",
+  //         reason: reason,
+  //       });
 
-  // Export cleanup function for server shutdown
-  module.exports = {
-    cleanupWebRTCConnections,
-    webrtcErrorHandler,
-  };
+  //       // Clean up stored connection info
+  //       activeConnections.delete(socket.id);
+
+  //       console.log(
+  //         `Peer disconnection notification sent to room: ${roomId} for user: ${userId}`
+  //       );
+  //     }
+  //   } catch (error) {
+  //     console.error("Error handling disconnect:", error);
+  //   }
+  // });
+
+  // // Health check for WebRTC connections
+  // socket.on("webrtc-health-check", async (data) => {
+  //   try {
+  //     const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
+
+  //     if (isPlayerInGame) {
+  //       socket.emit("webrtc-health-response", {
+  //         status: "ok",
+  //         timestamp: Date.now(),
+  //         room: data.room,
+  //       });
+  //     } else {
+  //       socket.emit("webrtc-health-response", {
+  //         status: "unauthorized",
+  //         timestamp: Date.now(),
+  //       });
+  //     }
+  //   } catch (error) {
+  //     socket.emit("webrtc-health-response", {
+  //       status: "error",
+  //       timestamp: Date.now(),
+  //       error: error.message,
+  //     });
+  //   }
+  // });
+
+  // // Room management - get active connections in room
+  // socket.on("get-room-connections", async (data) => {
+  //   try {
+  //     const isPlayerInGame = await isPlayerInRoom(data.room, data.myId);
+
+  //     if (isPlayerInGame) {
+  //       const roomConnections = [];
+
+  //       // Get all sockets in the room
+  //       const socketsInRoom = await io.in(data.room).fetchSockets();
+
+  //       for (const socketInRoom of socketsInRoom) {
+  //         const connInfo = activeConnections.get(socketInRoom.id);
+  //         if (connInfo && connInfo.userId !== data.myId) {
+  //           roomConnections.push({
+  //             userId: connInfo.userId,
+  //             socketId: socketInRoom.id,
+  //             type: connInfo.type,
+  //           });
+  //         }
+  //       }
+
+  //       socket.emit("room-connections", {
+  //         room: data.room,
+  //         connections: roomConnections,
+  //         total: roomConnections.length,
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("Error getting room connections:", error);
+  //     socket.emit("error", {
+  //       type: "server_error",
+  //       message: "Failed to get room connections",
+  //     });
+  //   }
+  // });
+
+  // // Cleanup function for server shutdown
+  // const cleanupWebRTCConnections = () => {
+  //   console.log("Cleaning up WebRTC connections...");
+
+  //   // Notify all active connections about server shutdown
+  //   for (const [socketId, connectionInfo] of activeConnections) {
+  //     const socket = io.sockets.sockets.get(socketId);
+  //     if (socket) {
+  //       socket.emit("server-shutdown", {
+  //         message: "Server is shutting down",
+  //         timestamp: Date.now(),
+  //       });
+  //     }
+  //   }
+
+  //   activeConnections.clear();
+  // };
+
+  // // Error handling middleware for WebRTC events
+  // const webrtcErrorHandler = (eventName, handler) => {
+  //   return async (...args) => {
+  //     try {
+  //       await handler(...args);
+  //     } catch (error) {
+  //       console.error(`Error in ${eventName}:`, error);
+  //       socket.emit("error", {
+  //         type: "webrtc_error",
+  //         event: eventName,
+  //         message: error.message,
+  //         timestamp: Date.now(),
+  //       });
+  //     }
+  //   };
+  // };
+
+  // // Export cleanup function for server shutdown
+  // module.exports = {
+  //   cleanupWebRTCConnections,
+  //   webrtcErrorHandler,
+  // };
 });
 
 // ======================Socket logic==========
